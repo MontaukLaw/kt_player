@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">My Application FFMpeg Player KT</string>
+    <string name="init_text">00:00/00:00</string>
+</resources>
