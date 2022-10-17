@@ -38,10 +38,6 @@ public :
 
     void _start();
 
-    void stop();
-
-    void release();
-
     void setRenderCallback(RenderCallback callback);
     // void setRenderCallback(void *renderCallback);
 

@@ -1,6 +1,7 @@
 #include "VideoChannel.h"
 
-VideoChannel::VideoChannel(int index, AVCodecContext *codecContext) : BaseChannel(index, codecContext) {
+VideoChannel::VideoChannel(int streamIndex, AVCodecContext *codecContext)
+        : BaseChannel(streamIndex, codecContext) {
 
 }
 
@@ -14,7 +15,7 @@ void VideoChannel::video_decode() {
 
     while (isPlaying) {
 
-        LOGD("video_decode\n");
+        // LOGD("video_decode\n");
         int ret = packets.get_queue_and_pop(packet);  // 阻塞式获取队列中的数据包
         // 当外界要停止这个线程的时候，会把isPlaying设置为false，这个时候就会跳出循环，释放packet
         if (!isPlaying) {
@@ -40,7 +41,7 @@ void VideoChannel::video_decode() {
         } else if (ret != 0) {
             break;
         }
-
+        // LOGD("video_decode success\n");
         // 将这一帧放回到队列中
         frames.insert_to_queue(frame);
     }
@@ -64,7 +65,7 @@ void VideoChannel::video_play() {
                                             AV_PIX_FMT_RGBA,       // 输出的格式 RGBA, 安卓只能支持RGBA
                                             SWS_BILINEAR, nullptr, nullptr, nullptr);
     while (isPlaying) {
-        LOGD("video_play\n");
+        // LOGD("video_play\n");
         int ret = frames.get_queue_and_pop(frame);
         if (!isPlaying) {
             break;
@@ -76,7 +77,6 @@ void VideoChannel::video_play() {
         sws_scale(
                 // 输入
                 swsContext, frame->data, frame->linesize, 0, codecContext->height,
-
                 // 输出
                 dst_data, dst_linesize);
 
@@ -88,6 +88,7 @@ void VideoChannel::video_play() {
         release_av_frame(&frame);
     }
 
+    isPlaying = false;
     release_av_frame(&frame);
     av_freep(&dst_data[0]);
     sws_freeContext(swsContext);
@@ -124,8 +125,8 @@ void VideoChannel::stop() {
 
 }
 
-void VideoChannel::setRenderCallback(RenderCallback renderCallback) {
-    this->renderCallback = renderCallback;
+void VideoChannel::setRenderCallback(RenderCallback func) {
+    this->renderCallback = func;
 }
 
 

@@ -16,7 +16,7 @@ public:
     bool isPlaying;                  // 音频或者视频是否正在播放
     AVCodecContext *codecContext = 0;  // 解码器上下文
 
-    BaseChannel(int index, AVCodecContext *codecContext) : streamIndex(streamIndex), codecContext(codecContext) {
+    BaseChannel(int streamIndex, AVCodecContext *codecContext) : streamIndex(streamIndex), codecContext(codecContext) {
         packets.set_release_callback(release_av_packet);
         frames.set_release_callback(release_av_frame);
     }

@@ -6,7 +6,10 @@
 #define THREAD_MAIN 1
 #define THREAD_CHILD 2
 
-#define LOGD(...) __android_log_print(ANDROID_LOG_ERROR, "KTPlayer", __VA_ARGS__)
+#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, "KTPlayer", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "KTPlayer", __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "KTPlayer", __VA_ARGS__)
+
 
 #define FFMPEG_CAN_NOT_OPEN_URL 1
 #define FFMPEG_CAN_NOT_FIND_STREAMS 2

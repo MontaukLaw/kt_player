@@ -196,7 +196,7 @@ void KTPlayer::_prepare() {
         }
 
         // 打开解码器
-        ret = avcodec_open2(codecContext, codec, 0);
+        ret = avcodec_open2(codecContext, codec, nullptr);
         if (ret) {
             if (helper) {
                 char *errInfo = av_err2str(ret);
@@ -208,18 +208,17 @@ void KTPlayer::_prepare() {
 
         // 获取流的类型
         if (codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
-            audioChannel = new AudioChannel(0, nullptr);
+            // 音频流
+            audioChannel = new AudioChannel(i, codecContext);
 
+            LOGD("audioChannel index %d\n", audioChannel->streamIndex);
         } else if (codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
-            videoChannel = new VideoChannel(0, nullptr);
+            // 视频流
+            videoChannel = new VideoChannel(i, codecContext);
             videoChannel->setRenderCallback(this->renderCallback);
-        }
+            LOGD("videoChannel index %d\n", videoChannel->streamIndex);
 
-        // 准备成功, 把消息传到到Activity
-        if (helper) {
-            helper->onPrepared(THREAD_CHILD);
         }
-
     } // for end ----------------------------
 
     // 如果音频和视频都不存在
@@ -230,6 +229,7 @@ void KTPlayer::_prepare() {
         return;
     }
 
+    // 准备成功, 把消息传到到Activity
     if (helper) {
         helper->onPrepared(THREAD_CHILD);
     }

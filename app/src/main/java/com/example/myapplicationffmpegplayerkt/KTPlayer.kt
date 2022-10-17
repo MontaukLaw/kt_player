@@ -1,5 +1,6 @@
 package com.example.myapplicationffmpegplayerkt
 
+import android.util.Log
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
@@ -14,6 +15,7 @@ class KTPlayer : SurfaceHolder.Callback, LifecycleEventObserver {
         }
     }
 
+    private val TAG = "KTPlayer"
     private var onPreparedListener: OnPreparedListener? = null  // C++层准备情况的接口
     private var onErrorListener: OnErrorListener? = null  // C++层错误情况的接口
 
@@ -23,7 +25,7 @@ class KTPlayer : SurfaceHolder.Callback, LifecycleEventObserver {
     private var nativePlayerObj: Long? = null
 
     fun setSurfaceView(surfaceView: SurfaceView) {
-        if(surfaceHolder != null) {
+        if (surfaceHolder != null) {
             surfaceHolder?.removeCallback(this)
         }
         this.surfaceHolder = surfaceView.holder
@@ -50,7 +52,8 @@ class KTPlayer : SurfaceHolder.Callback, LifecycleEventObserver {
 
     fun prepare() {
         // 调用jni的prepare方法
-        prepareNative(dataSource)
+        nativePlayerObj = prepareNative(dataSource)
+        Log.d(TAG, "nativePlayerObj = $nativePlayerObj")
     }
 
     fun stop() {
@@ -135,5 +138,4 @@ class KTPlayer : SurfaceHolder.Callback, LifecycleEventObserver {
             onPreparedListener!!.onPrepared()
         }
     }
-
 }
