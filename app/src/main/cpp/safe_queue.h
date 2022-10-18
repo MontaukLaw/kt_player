@@ -7,18 +7,24 @@
 
 using namespace std;
 
+#define MAX_QUEUE_SIZE 10
+
 template<typename T>  // 泛型
+
 class SafeQueue {
 private :
     typedef void(*ReleaseCallback)(T *);  // 释放T里面的数据
 
+    typedef void(*SyncHandle)(queue<T> &);  // 同步队列, 让外界完成队列的清理
+
 public:
-    queue <T> queue;
+    queue<T> queue;
     pthread_mutex_t mutex;  // 安全队列的互斥锁
     pthread_cond_t cond;  // 等待和唤醒
     int work;  // 是否工作, 对队列进行控制
 
     ReleaseCallback releaseCallback;  // 释放T里面的数据
+    SyncHandle syncHandle;            // 同步队列, 让外界完成队列的清理
 
     SafeQueue() {
         pthread_mutex_init(&mutex, 0);
@@ -58,7 +64,7 @@ public:
         return size;
     }
 
-    int get_queue_and_pop(T &value) {
+    int pop_from_queue(T &value) {
         pthread_mutex_lock(&mutex);
 
         // 当队列为空时，等待
@@ -101,6 +107,28 @@ public:
 
     void set_release_callback(ReleaseCallback callback) {
         this->releaseCallback = callback;
+    }
+
+    bool if_queue_full(void) {
+
+        if (get_queue_size() >= MAX_QUEUE_SIZE) {
+            return true;
+        }
+        return false;
+    }
+
+    // 让外界完成队列的清理
+    void set_sync_handle(SyncHandle handle) {
+        this->syncHandle = handle;
+    }
+
+    // 同步队列
+    void sync() {
+        pthread_mutex_lock(&mutex);
+        if (syncHandle) {
+            syncHandle(queue);
+        }
+        pthread_mutex_unlock(&mutex);
     }
 };
 

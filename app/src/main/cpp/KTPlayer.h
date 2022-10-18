@@ -32,11 +32,11 @@ public :
 
     void prepare();
 
-    void _prepare();
+    void get_media_format();
 
     void start();
 
-    void _start();
+    void read_media_file();
 
     void setRenderCallback(RenderCallback callback);
     // void setRenderCallback(void *renderCallback);

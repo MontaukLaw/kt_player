@@ -43,20 +43,34 @@ void *read_package_thread(void *args) {
     return nullptr;
 }
 
-// 第2个线程, 用于启动解码器进行解码
+// 第2个子线程, 用于启动解码器进行解码
 void *start_thread(void *args) {
     // 强转回KTPlayer对象
     auto *player = static_cast<KTPlayer *>(args);
-    player->_start();
+    player->read_media_file();
 
     return nullptr;
 }
 
-void KTPlayer::_start() {
+void KTPlayer::read_media_file() {
 
     while (isPlaying) {
+
+        // 等待读出来的数据被解码器消费
+        if (videoChannel && videoChannel->packets.if_queue_full()) {
+            av_usleep(10 * 1000); // 10ms
+            continue;
+        }
+
+        if (audioChannel && audioChannel->packets.if_queue_full()) {
+            av_usleep(10 * 1000);
+            continue;
+        }
+
         // 从队列中取出一个AVPacket 可能是音频也可能是视频
+        // 这个packet是从mp4文件中读出来的, 放入队列, 暂时不可以释放
         AVPacket *packet = av_packet_alloc();
+
         // 从队列中取出一个AVPacket
         int ret = av_read_frame(formatContext, packet);
         if (!ret) {
@@ -70,27 +84,56 @@ void KTPlayer::_start() {
             }
         } else if (ret == AVERROR_EOF) {
             // 读取完毕
-            if (audioChannel->packets.empty() && audioChannel->frames.empty() &&
-                videoChannel->packets.empty() && videoChannel->frames.empty()) {
+            bool ifAudioFinished = false;
+            bool ifVideoFinished = false;
+            if (audioChannel) {
+                if (audioChannel->packets.empty() && audioChannel->frames.empty()) {
+                    ifAudioFinished = true;
+                }
+            } else {
+                ifAudioFinished = true;
+            }
+
+            if (videoChannel) {
+
+                if (videoChannel->packets.empty() && videoChannel->frames.empty()) {
+                    ifVideoFinished = true;
+                }
+            } else {
+                ifVideoFinished = true;
+            }
+
+            if (ifAudioFinished && ifVideoFinished) {
                 // 音频和视频都播放完毕
+                LOGI("all media data been played");
                 break;
             }
         } else {
             // 读取失败
+            LOGE("read media file fail");
             break;
         }
     }
 
+    LOGD("读取完毕");
     isPlaying = false;
 
-    videoChannel->stop();
-    audioChannel->stop();
+    if (videoChannel) {
+        videoChannel->stop();
+    }
+    if (audioChannel) {
+        audioChannel->stop();
+    }
 }
 
 void KTPlayer::start() {
     isPlaying = true;
 
     if (videoChannel) {
+        if(audioChannel){
+            // 让video channel可以持有audio channel的指针
+            videoChannel->setAudioChannel(audioChannel);
+        }
         videoChannel->set_playing(true);
         videoChannel->start();
     }
@@ -108,7 +151,7 @@ void KTPlayer::start() {
 void *task_prepare(void *args) {
     // 强转回KTPlayer对象
     auto *player = static_cast<KTPlayer *>(args);
-    player->_prepare();
+    player->get_media_format();
 
     // 必须给返回值，否则运行会报错
     return nullptr;
@@ -126,7 +169,8 @@ void KTPlayer::prepare() {
     pthread_create(&pid_prepare, nullptr, task_prepare, this); // this == DerryPlayer的实例
 }
 
-void KTPlayer::_prepare() {
+// 对媒体文件进行解封装
+void KTPlayer::get_media_format() {
 
     formatContext = avformat_alloc_context();
 
@@ -206,20 +250,22 @@ void KTPlayer::_prepare() {
             return;
         }
 
+        AVRational timeBase = stream->time_base;
+
         // 获取流的类型
         if (codecpar->codec_type == AVMEDIA_TYPE_AUDIO) {
             // 音频流
-            audioChannel = new AudioChannel(i, codecContext);
-
-            LOGD("audioChannel index %d\n", audioChannel->streamIndex);
+            audioChannel = new AudioChannel(i, codecContext, timeBase);
+            // LOGD("audioChannel index %d\n", audioChannel->streamIndex);
         } else if (codecpar->codec_type == AVMEDIA_TYPE_VIDEO) {
             // 视频流
-            videoChannel = new VideoChannel(i, codecContext);
+            AVRational frameRate = stream->avg_frame_rate;
+            int fps = av_q2d(frameRate);
+            videoChannel = new VideoChannel(i, codecContext, timeBase, fps);
             videoChannel->setRenderCallback(this->renderCallback);
-            LOGD("videoChannel index %d\n", videoChannel->streamIndex);
-
+            // LOGD("videoChannel index %d\n", videoChannel->streamIndex);
         }
-    } // for end ----------------------------
+    }  // for end ----------------------------
 
     // 如果音频和视频都不存在
     if (!audioChannel && !videoChannel) {
@@ -231,6 +277,7 @@ void KTPlayer::_prepare() {
 
     // 准备成功, 把消息传到到Activity
     if (helper) {
+        // helper->get_pid();
         helper->onPrepared(THREAD_CHILD);
     }
 }

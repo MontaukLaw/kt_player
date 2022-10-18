@@ -3,8 +3,10 @@
 
 extern "C" {
 #include <libavcodec/avcodec.h>
+#include "libavutil/time.h"
 };
 
+#include "util.h"
 #include "safe_queue.h"
 
 class BaseChannel {
@@ -16,7 +18,13 @@ public:
     bool isPlaying;                  // 音频或者视频是否正在播放
     AVCodecContext *codecContext = 0;  // 解码器上下文
 
-    BaseChannel(int streamIndex, AVCodecContext *codecContext) : streamIndex(streamIndex), codecContext(codecContext) {
+    AVRational timeBase;   // 音视频都需要这个时间基
+
+    BaseChannel(int streamIndex, AVCodecContext *codecContext, AVRational timeBase)
+            :
+            streamIndex(streamIndex),
+            codecContext(codecContext),
+            timeBase(timeBase) {
         packets.set_release_callback(release_av_packet);
         frames.set_release_callback(release_av_frame);
     }

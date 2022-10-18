@@ -32,7 +32,7 @@ void render_callback(uint8_t *data, int linesize, int width, int height) {
     // 如果我在渲染的时候，是被锁住的，那我就无法渲染，我需要释放 ，防止出现死锁
     if (ANativeWindow_lock(window, &window_buffer, nullptr)) {
         ANativeWindow_release(window);
-        window = 0;
+        window = nullptr;
 
         pthread_mutex_unlock(&mutex); // 解锁，怕出现死锁
         return;
@@ -42,10 +42,11 @@ void render_callback(uint8_t *data, int linesize, int width, int height) {
     // 填充[window_buffer]  画面就出来了  ==== 【目标 window_buffer】
     uint8_t *dst_data = static_cast<uint8_t *>(window_buffer.bits);
     int dst_linesize = window_buffer.stride * 4;
+    // linesize就是每行的字节数, 即一行数据有7680个字节
 
     for (int i = 0; i < window_buffer.height; ++i) {
         memcpy(dst_data + i * dst_linesize, data + i * linesize, dst_linesize);
-        LOGD("dst_linesize:%d  linesize:%d\n", dst_linesize, linesize);
+        // LOGD("dst_linesize:%d  linesize:%d\n", dst_linesize, linesize);
     }
     // 数据刷新
     ANativeWindow_unlockAndPost(window); // 解锁后 并且刷新 window_buffer的数据显示画面
@@ -107,3 +108,5 @@ JNIEXPORT void JNICALL Java_com_example_myapplicationffmpegplayerkt_KTPlayer_set
 
     pthread_mutex_unlock(&mutex);
 }
+
+

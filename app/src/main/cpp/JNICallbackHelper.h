@@ -13,6 +13,7 @@ public:
     void onPrepared(int thread_mode);
     void onError(int thread_mode, int error_code, char * ffmpegErrorMsg);
 
+    void get_pid();
 private:
     JavaVM *vm = 0;
     JNIEnv *env = 0;
